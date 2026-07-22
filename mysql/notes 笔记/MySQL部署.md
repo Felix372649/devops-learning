@@ -79,7 +79,6 @@ grep 'password' /var/log/mysqld.log
 7.修改Mysql服务器密码
  mysqladmin   -uroot    -p'es,W;ya(K1Th'    password    'QianFeng@123'
 
-
 8.登录Mysql系统
 mysql      -uroot         -p'QianFeng@123'
 
@@ -151,7 +150,8 @@ tar xf  boost_1_59_0.tar.gz
 编译：
 make （等待1个小时左右）
 
-安装： make install
+安装： 
+make install
 
 初始化：
 cd /usr/local/mysql 安装位置
@@ -172,6 +172,7 @@ basedir=/usr/local/mysql
 datadir=/usr/local/mysql/data
 
 开机启动MySQL：
+
 cp /usr/local/mysql/support-files/mysql.server /etc/init.d/mysqld
 chkconfig --add mysqld 
 添加mysql服务：systemctl   enable  mysqld

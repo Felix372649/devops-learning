@@ -1,0 +1,148 @@
+# #===============================================
+# #<<<<<<<<<<【 Ad-Hoc - 点对点模式 】>>>>>>>>>>>>
+# #===============================================
+
+
+# #=================[1.shell模块]==================
+# ansible webserver -m shell -a 'hostname' -o                 # 查看主机名 -o   ：One-line单行输出。会把结果压缩成一行显示，看起来更清爽，适合人眼阅读。
+# ansible webserver -m shell -a 'hostname' -o -f 2            # 查看主机名 只显示两列 -f 代表 Forks并发数 -f 2 表示 Ansible 会同时向 2 台主机发送命令。
+# ansible webserver -m shell -a 'yum -y install httpd' -o     # 安装apache
+# ansible host3 -m shell -a 'uptime' -o                       # uptime（查看系统负载）命令，结果单行输出
+
+
+# #=================[2.复制模块]==================
+# copy    ：复制模块
+# backup  ：如果文件有多份，可以进行备份。
+# ansible webserver -m copy -a 'src=/etc/hosts dest=/tmp/2.txt owner=root group=bin mode=777'
+# ansible webserver -m copy -a 'src=/etc/hosts dest=/tmp/2.txt owner=root group=bin mode=777 backup=yes'
+
+
+# #=================[3.用户模块]==================
+# #创建用户:
+# ansible webserver -m user -a 'name=qianfeng state=present'
+
+# #修改密码：
+#     #1.生成加密密码:
+#       echo '512050951' | openssl passwd -1 -stdin 
+#         # 生成加密密码值: $1$XVzsJMDr$5wI4oUaQ.emxap6s.N272.
+
+#     #2.修改密码:
+#       ansible webserver -m user -a 'name=qianfeng password="$1$XVzsJMDr$5wI4oUaQ.emxap6s.N272."'
+
+# #修改shell:
+# ansible webserver -m user -a 'name=qianfeng shell=/sbin/nologin append=yes'
+
+# #删除用户:
+# ansible webserver -m user -a 'name=qianfeng state=absent'
+
+
+# # =================[4.软件包管理]==================
+# ansible host1 -m yum -a 'name="*" state=latest'         # 升级所有包
+# ansible host2 -m yum -a 'name="httpd" state=latest'     # 安装apache
+
+
+# # =================[5.服务模块]==================
+# ansible host2 -m service -a 'name=httpd state=started'                # 启动
+# ansible host2 -m service -a 'name=httpd state=started enabled=yes'    # 开机启动
+# ansible host2 -m service -a 'name=httpd state=stopped'                # 停止
+# ansible host2 -m service -a 'name=httpd state=restarted'              # 重启
+# ansible host2 -m service -a 'name=httpd state=started enabled=no'     # 开机禁止启动
+
+
+# # =================[6.文件模块]==================
+# ansible webserver -m file -a 'path=/tmp/99.txt mode=0744 state=touch'     # 创建文件  模块file  path路径/tmp/99.txt  文件权限为744  状态touch创建
+# ansible webserver -m file -a 'path=/root/Luck mode=0744 state=directory'  # 创建目录  模块file  path路径/root/Luck   文件权限为744  状态directory创建
+
+
+# =================[7.收集模块]==================
+# ansible webserver -m setup -a 'filter=ansible_all_ipv4_addresses'         # setup模块   收集目标主机的系统信息（facts），如 IP、主机名、操作系统、CPU、内存等。
+#                                                                           # filter参数  从 setup模块收集的全部 facts 中，只提取键名匹配指定模式的 facts，丢弃其余所有数据。
+
+# # =================[ 8.fetch ]==================
+# 从远程某主机获取文件到本地
+# ansible host1 -m fetch -a 'src=/root/Luck.txt dest=1.txt'                 # fetch 从别的服务器里将文件 copy到本地服务器里！
+#                                                                           # 他会创建一个服务器名字的目录，里面放着拷贝的文件/root/host1/1.txt
+
+# # =================[ 9.cron ]==================
+# minte时间=每隔10分钟去干活   job工作=调用系统sbin下的ntpdate 对192.168.233.130 这台机器进行时间对照！统一时间！
+# ansible webserver -m cron -a 'name="beta" minute="*/10" job=/sbin/ntpdate 192.168.233.130 &> /dev/null'
+
+# 语法：
+# action : cron_backup=   #如果设置，则创建一个crontab备份[yes|no]
+# cron_file=              #如果指定，使用这个文件 cron.d，而不是单个用户
+# day=                    #日应该运行的工作(1-31,*,/2,)
+# hour=                   #小时 (0-23,*,/2,)
+# minute=                 #分钟(0-59,*,/2,)
+# month=                  #月(1-12,*,/2,)
+# weekday=                #周 (0-6 for Sunday-Saturday,*)
+# job=                    #指明运行的命令是什么
+# name=                   #定时任务描述
+# reboot                  #任务在重启时运行，不建议使用，建议使用special_time
+
+
+# # =================[ 10.group ]==================
+#       group用户组模块，添加或删除组
+# 参数：
+# gid               # 设置组的GID号
+# name=             # 管理组的名称
+# state             # 指定组状态，默认为创建，设置值为absent为删除
+# system            # 设置值为yes，表示创建系统组
+# # ------------------------------------------------
+# ansible webserver -m group -a 'name=Luck gid=1010 state=present'           # 在主机上，确保存在一个名字叫 Luck 的用户组,没有就新建，有了就不动!
+
+
+# # =================[ 11.script ]==================
+# 指定节点运行服务端的脚本，在节点机器上运行！
+# 核心参数：
+# script（必须）    # 指定你本地脚本的路径（例如 ./update.sh）。
+# creates（推荐）   # 远程主机上的一个文件。如果该文件已存在，则跳过执行脚本。这是实现幂等性的关键。
+# removes           # 远程主机上的一个文件。如果该文件存在，则执行脚本（与 creates 相反）。
+# chdir             # 在远程主机上执行脚本前，先切换到这个目录。
+# args              # 把参数传给脚本（例如 script: /tmp/test.sh args='--force'）。
+
+# ansible webserver -m script -a "./root/install_nginx.sh"
+
+
+# # =================[ 12.unarchive ]==================
+# 本模块会将本地压缩包拷贝到远程机器上解压
+
+# 相关参数：
+# src:              # 必选项，要解压的包名
+# dest:             # 必选项，解压到哪个目录下
+# remote_src=yes    # 选项表示解压远程主机上的压缩包
+#            yes:   # 解压远程主机上的包。  
+#             no：  # 将管理机上的包传到远程主机上解压
+
+# ansible webserver -m unarchive -a 'src=/root/1.tar dest=/tmp/'
+
+
+
+
+
+# # ================================================
+# # <<<<<<<<<<【 第八章.Role-角色扮演 】>>>>>>>>>>>>
+# # ================================================
+
+# 1.目录结构
+# roles/
+#   ┣-nginx
+#   |   ┣-files              # 放静态文件，原样拷贝到目标机（如 index.html）
+#   |   |   ┗-index.html     # 静态网页文件，会被原样拷贝到目标机器上，作为 nginx 的默认首页。
+#   |   ┣-handlers           # 放处理器，被 notify 触发（如重启服务）
+#   |   |   ┗-main.yaml      # 定义处理器，比如“重启 nginx”这种操作。它不会主动运行，得靠任务里的 notify 来触发。
+#   |   ┣-tasks              # 放任务列表，角色实际要执行的操作
+#   |   |   ┗-main.yaml      # 角色的核心任务清单，写着具体要干的事：装软件、拷文件、开服务…… 所有动作都列在这里。
+#   |   ┣-templates          # 放 Jinja2 模板，通过变量渲染后生成配置文件
+#   |   |   ┗-nginx.conf.j2  # nginx 配置的 Jinja2 模板文件。里面可以写变量 {{ }}，在任务执行时会渲染成最终配置再上传。
+#   |   ┗-vars               # 放变量，供角色内部使用，优先级较高
+#   |       ┗-main.yaml      # 角色变量文件，定义模板和任务里要用到的值，比如端口、路径，优先级较高，不容易被覆盖。
+#   ┗-site.yaml              # 主 playbook 文件，负责编排整个流程，引用 nginx 角色去执行任务。它是入口。
+
+
+# 一共6个目录，6个文件
+# nginx                      # 角色名
+# files                      # 普通文件
+# handlers                   # 触发器程序
+# tasks                      # 主任务
+# templates                  # 金甲模板（有变量的文件）
+# vars                       # 自定义变量

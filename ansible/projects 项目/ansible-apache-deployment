@@ -1,0 +1,145 @@
+#!/bin/bash
+#YAML-YAML Ain’t Markup Language-非标记语言
+
+#   第一步：
+#   清理目标主机，确保他们的环境是干净的！别给自己找事！
+all_remove(){
+ansible all -m yum -a 'name=httpd-tools state=removed' -o
+}
+
+
+
+#   第二步：
+#   在ansible主机服务器上安装httpd
+install_yum_httpd(){
+if ! yum install -y httpd; then
+    echo "yum安装失败！"
+    return 1
+fi
+}
+
+
+#   第三步：
+#   看看有没有这目录！没有就创建！创建失败哼哼一声！我心里有个数！
+mkdir_apache(){
+if ! [ -d apache ]; then
+    if ! mkdir apache; then
+        echo "创建apache文件出错！"
+        return 2
+    fi
+fi
+}
+
+
+#   第四步：
+cd_apache(){
+if ! cd apache; then
+    echo "我靠！这个地方能出错？牛逼了！看这里！看这里！cd进不进去apache目录！"
+fi
+}
+
+
+#   第五步：
+#   看看有没有这文件！做个判断！强迫症！
+httpd_conf(){
+if ! [ -f /etc/httpd/conf/httpd.conf ]; then
+    echo "笑死！安装完httpd，却没有httpd.conf文件！得多倒霉！"
+    return 3 
+fi
+}
+
+
+#   第六步：
+#   配置网站无非就是来到他的配置文件里，写入配置数据！
+#   然后给目标主机挨个发送过去替换他们的配置文件！
+grep_listen_80(){
+if ! grep "^Listen 80" /etc/httpd/conf/httpd.conf; then
+    echo "你点儿真背！httpd.conf 里没有 Listen 80 这条！想办法解决吧！"
+    return 4
+fi
+}
+
+
+#   第七步：
+#   告诉未来忘记的我！这是复制到/root/apache里了.
+cp_httpd_conf(){
+cp -rf /etc/httpd/conf/httpd.conf .
+}
+
+
+#   第八步：
+#   修改配置，用作推送
+sed_listen_80(){
+if ! sed -ri 's/Listen 80/Listen 8080/' ./httpd.conf; then
+    echo "无法将httpd.conf 里的 Listen 80 改成 Listen 8080"
+    return 5
+fi
+}
+
+
+#   第九步：
+#   编写剧本任务
+vim_apache(){
+cat > apache.yaml <<EOM
+- hosts: webserver
+  tasks:
+  - name: install apache packages
+    yum: name=httpd state=present
+
+  - name: copy apache conf
+    copy: src=./httpd.conf dest=/etc/httpd/conf/httpd.conf
+    notify: restart apache service
+
+  - name: ensure apache is runngin
+    service: name=httpd state=started enabled=yes
+
+  handlers:
+  - name: restart apache service
+    service: name=httpd state=restarted
+EOM
+}
+
+
+#==================【下面这些容易理解！但是比较难记！】=====================
+#- hosts: webserver                                              # 就是让主机组webserver的机器执行下面的任务！
+#  tasks:                                                        # 任务列表
+
+#  - name: install apache packages                               # 安装 Apache（httpd）软件包
+#    yum: name=httpd state=present                               # yum源安装 名字是httpd  state=没安装就安装！安装过了就跳过！
+
+#  - name: copy apache conf                                      # 复制（下发） Apache 配置文件
+#    copy: src=./httpd.conf dest=/etc/httpd/conf/httpd.conf      # 复制 复制谁？src源路径文件   复制到哪？dest目标路径位置
+
+#    notify: restart apache service                              # 【新增】发通知：如果文件变了，去呼叫下面那个名字叫 restart_httpd 的任务
+#  - name: ensure apache is running                              # 确保 Apache 服务正在运行
+#    service: name=httpd state=started enabled=yes               # 控制系统服务  名字httpd  干嘛？进行安装！ 并且开启自动启动！
+
+#  handlers:                                                     # 【新增】处理程序（和 tasks 平级）
+#  - name: restart apache service                                # 接收通知的名字（必须和上面 notify 的名字一模一样）
+#    service: name:httpd state=restarted                         # 修改端口配置后程序会自动重启更新配置信息！
+#===========================================================================
+
+
+#   第十步：
+ansible_playbook(){
+ansible-playbook apache.yaml --syntax-check  # 检验语法 --syntax-check
+ansible-playbook apache.yaml --list-tasks    # 列出任务 --list-tasks
+ansible-playbook apache.yaml --list-hosts    # 列出主机 --list-hosts
+
+ansible-playbook apache.yaml                 # 用ansible执行剧本！
+#这块需要记playbook 用谁执行？ansible！剧本在哪里？叫啥名？apache.yaml 得记住以yaml结尾的文件！简称压马路文件！
+}
+
+
+
+#======【主程序执行顺序】======
+all_remove          # 第一步 清理目标主机
+install_yum_httpd   # 第二步 在ansible主机服务器上安装httpd
+mkdir_apache        # 第三步 创建目录
+cd_apache           # 第四步 进图目录里
+httpd_conf          # 第五步 看看有没有这httpd.conf文件
+grep_listen_80      # 第六步 查Listen 80
+cp_httpd_conf       # 第七步 将/etc/httpd/conf/httpd.conf复制到/root/apache里
+sed_listen_80       # 第八步 Listen 80 改为：Listen 8080
+vim_apache          # 第九步 编写剧本任务
+ansible_playbook    # 第十步 执行剧本！
